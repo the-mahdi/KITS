@@ -176,12 +176,17 @@ class Filler(pl.LightningModule):
         :return: (y_true), y_hat, (mask)
         """
         batch_data, batch_preprocessing = self._unpack_batch(batch)
+        node_feats = None
+        if 'node_feats_window' in batch_data:
+            node_feats = batch_data.pop('node_feats_window')[0]
+        elif 'node_feats_horizon' in batch_data:
+            node_feats = batch_data.pop('node_feats_horizon')[0]
         if preprocess:
             x = batch_data.pop('x')
             x = self._preprocess(x, batch_preprocessing)
-            y_hat = self.forward(x, **batch_data)
+            y_hat = self.forward(x, **batch_data, node_feats=node_feats)
         else:
-            y_hat = self.forward(**batch_data)
+            y_hat = self.forward(**batch_data, node_feats=node_feats)
         # Rescale outputs
         if postprocess:
             y_hat = self._postprocess(y_hat, batch_preprocessing)
