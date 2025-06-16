@@ -1,5 +1,7 @@
 import sys
 import warnings
+import numpy as np
+import pandas as pd
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader, Subset, RandomSampler
 
@@ -130,6 +132,20 @@ class SpatioTemporalDataModule(pl.LightningDataModule):
                           batch_size=batch_size,
                           num_workers=self.workers,
                           **kwargs)
+
+    @staticmethod
+    def load_node_feats(path):
+        """Load node features from ``path``.
+
+        Accepts ``.npy`` or ``.csv`` files and returns a numpy array.
+        """
+        if path is None:
+            return None
+        if path.endswith('.npy') or path.endswith('.npz'):
+            return np.load(path)
+        if path.endswith('.csv'):
+            return pd.read_csv(path, header=None).values
+        raise ValueError(f'Unsupported node feature format for {path}')
 
     def train_dataloader(self, shuffle=True, batch_size=None):
         if self.samples_per_epoch is not None:

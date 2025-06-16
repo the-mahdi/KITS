@@ -67,6 +67,7 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument("--model-name", type=str, default='kits')
     parser.add_argument("--dataset-name", type=str, default='la_point')
+    parser.add_argument("--node-feat-path", type=str, default=None)
     parser.add_argument("--miss-rate", default=0.5, type=float)
     parser.add_argument("--mode", default="road", choices=["road"], type=str)
     parser.add_argument("--test-entries", default="", choices=["", "metr_la_coarse_to_fine.txt", "metr_la_coarse_to_fine_hard.txt", "metr_la_region.txt", "metr_la_region_hard.txt"], type=str)
@@ -136,11 +137,14 @@ def run_experiment(args):
     ########################################
     # instantiate dataset
     dataset_cls = GraphImputationDataset if has_graph_support(model_cls) else ImputationDataset
+    node_feats = SpatioTemporalDataModule.load_node_feats(args.node_feat_path)
+    exo = {'node_feats': node_feats} if node_feats is not None else None
     torch_dataset = dataset_cls(*dataset.numpy(return_idx=True),
                                 mask=dataset.training_mask,
                                 eval_mask=dataset.eval_mask,
                                 window=args.window,
-                                stride=args.stride)
+                                stride=args.stride,
+                                exogenous=exo)
 
     # get train/val/test indices
     split_conf = parser_utils.filter_function_args(args, dataset.splitter, return_dict=True)
