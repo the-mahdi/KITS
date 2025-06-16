@@ -15,7 +15,8 @@ class KITS(nn.Module):
                  adj,
                  d_in,
                  d_hidden,
-                 args
+                 args,
+                 node_feat_dim=0
                  ):
         super(KITS, self).__init__()
         self.d_in = d_in
@@ -24,7 +25,8 @@ class KITS(nn.Module):
 
         self.t_dim = 3
         self.register_buffer('adj', torch.tensor(adj).float())
-        self.fc_1 = nn.Linear(1, d_hidden)
+        self.node_feat_dim = node_feat_dim
+        self.fc_1 = nn.Linear(d_in + node_feat_dim, d_hidden)
 
         self.gcn_1 = SpatialConvOrderK(c_in=self.t_dim * d_hidden, c_out=d_hidden, support_len=2 * 1, order=1, include_self=False)
         self.gcn_2 = SpatialConvOrderK(c_in=self.t_dim * d_hidden, c_out=d_hidden, support_len=2 * 1, order=1, include_self=False)
@@ -77,8 +79,13 @@ class KITS(nn.Module):
             supp_update.append(s)
         return supp_update
 
-    def forward(self, x, mask=None, known_set=None, sub_entry_num=None, reset=False):
+    def forward(self, x, mask=None, known_set=None, sub_entry_num=None, reset=False, node_feats=None):
         adj = self.adj.clone()  # adjacency matrix
+
+        if node_feats is not None:
+            b, s, n, _ = x.size()
+            node_feats = node_feats.unsqueeze(0).unsqueeze(0).expand(b, s, -1, -1)
+            x = torch.cat([x, node_feats], dim=-1)
 
         if self.training:
             if reset:
