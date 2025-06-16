@@ -138,6 +138,7 @@ def run_experiment(args):
     # instantiate dataset
     dataset_cls = GraphImputationDataset if has_graph_support(model_cls) else ImputationDataset
     node_feats = SpatioTemporalDataModule.load_node_feats(args.node_feat_path)
+    node_feat_dim = node_feats.shape[1] if node_feats is not None else 0
     exo = {'node_feats': node_feats} if node_feats is not None else None
     torch_dataset = dataset_cls(*dataset.numpy(return_idx=True),
                                 mask=dataset.training_mask,
@@ -227,7 +228,8 @@ def run_experiment(args):
     # predictor                            #
     ########################################
     # model's inputs
-    additional_model_hparams = dict(adj=adj, d_in=dm.d_in, n_nodes=dm.n_nodes, args=args)
+    additional_model_hparams = dict(adj=adj, d_in=dm.d_in, n_nodes=dm.n_nodes,
+                                    args=args, node_feat_dim=node_feat_dim)
     model_kwargs = parser_utils.filter_args(args={**vars(args), **additional_model_hparams},
                                             target_cls=model_cls,
                                             return_dict=True)
