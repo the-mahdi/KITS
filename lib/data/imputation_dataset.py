@@ -57,4 +57,33 @@ class ImputationDataset(TemporalDataset):
 
 
 class GraphImputationDataset(ImputationDataset, SpatioTemporalDataset):
-    pass
+    def __init__(self, data,
+                 index=None,
+                 mask=None,
+                 eval_mask=None,
+                 freq=None,
+                 trend=None,
+                 scaler=None,
+                 window=24,
+                 stride=1,
+                 exogenous=None,
+                 node_feats=None):
+        super(GraphImputationDataset, self).__init__(data,
+                                                     index=index,
+                                                     mask=mask,
+                                                     eval_mask=eval_mask,
+                                                     freq=freq,
+                                                     trend=trend,
+                                                     scaler=scaler,
+                                                     window=window,
+                                                     stride=stride,
+                                                     exogenous=exogenous)
+
+        if node_feats is not None:
+            node_feats = self.check_input(node_feats)
+            if node_feats.ndim == 2:
+                node_feats = node_feats.unsqueeze(0)
+            elif node_feats.ndim == 1:
+                node_feats = node_feats.view(1, -1, 1)
+            node_feats = node_feats.repeat(self.n_steps, 1, 1)
+            self.add_exogenous(node_feats, "node_feats", for_window=True, for_horizon=True)
