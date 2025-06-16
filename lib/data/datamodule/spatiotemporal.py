@@ -145,7 +145,8 @@ class SpatioTemporalDataModule(pl.LightningDataModule):
                 raise ValueError(f'node features shape mismatch: expected {self.torch_dataset.n_nodes} nodes, got {node_feats.shape}')
             self.node_feats = node_feats
             if hasattr(self.torch_dataset, 'node_feats'):
-                self.torch_dataset.node_feats = node_feats
+                repeated = np.repeat(node_feats[None, ...], self.torch_dataset.n_steps, axis=0)
+                self.torch_dataset.node_feats = repeated
 
     def _data_loader(self, dataset, shuffle=False, batch_size=None, **kwargs):
         batch_size = self.batch_size if batch_size is None else batch_size
