@@ -27,7 +27,8 @@ class SpatioTemporalDataModule(pl.LightningDataModule):
                  test_idxs=None,
                  batch_size=32,
                  workers=8,
-                 samples_per_epoch=None):
+                 samples_per_epoch=None,
+                 node_feat_path=None):
         super(SpatioTemporalDataModule, self).__init__()
         self.torch_dataset = dataset
         # splitting
@@ -45,6 +46,8 @@ class SpatioTemporalDataModule(pl.LightningDataModule):
         # self.workers = workers
         self.workers = 0
         self.samples_per_epoch = samples_per_epoch
+        self.node_feat_path = node_feat_path
+        self.node_feats = None
 
     @property
     def is_spatial(self):
@@ -125,6 +128,25 @@ class SpatioTemporalDataModule(pl.LightningDataModule):
                     scaler.fit(exo[self.train_slice], keepdims=True).to_torch()
                     setattr(self.torch_dataset, label, scaler.transform(exo))
 
+        if self.node_feat_path is not None:
+            try:
+                if self.node_feat_path.endswith('.npy') or self.node_feat_path.endswith('.npz'):
+                    node_feats = np.load(self.node_feat_path)
+                else:
+                    node_feats = pd.read_csv(self.node_feat_path, header=None).values
+            except Exception:
+                node_feats = np.load(self.node_feat_path)
+            node_feats = np.asarray(node_feats)
+            if node_feats.ndim == 1:
+                node_feats = node_feats.reshape(-1, 1)
+            if node_feats.shape[0] != self.torch_dataset.n_nodes and node_feats.shape[1] == self.torch_dataset.n_nodes:
+                node_feats = node_feats.T
+            if node_feats.shape[0] != self.torch_dataset.n_nodes:
+                raise ValueError(f'node features shape mismatch: expected {self.torch_dataset.n_nodes} nodes, got {node_feats.shape}')
+            self.node_feats = node_feats
+            if hasattr(self.torch_dataset, 'node_feats'):
+                self.torch_dataset.node_feats = node_feats
+
     def _data_loader(self, dataset, shuffle=False, batch_size=None, **kwargs):
         batch_size = self.batch_size if batch_size is None else batch_size
         return DataLoader(dataset,
@@ -168,4 +190,5 @@ class SpatioTemporalDataModule(pl.LightningDataModule):
         parser.add_argument('--scale', type=str_to_bool, nargs='?', const=True, default=True)
         parser.add_argument('--workers', type=int, default=1)
         parser.add_argument('--samples-per-epoch', type=int, default=None)
+        parser.add_argument('--node-feat-path', type=str, default=None)
         return parser
